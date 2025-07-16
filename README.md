@@ -1,50 +1,69 @@
-# Welcome to your Expo app 👋
+# 🌟 Chuti – Smart & Safe Chat for Children
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Chuti** is a child-focused chat application designed to create a safer digital communication space for children. It combines AI-based detection of harmful text patterns with robust parental monitoring features to protect children from cyberbullying, online predators, and explicit content.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Key Features
 
-   ```bash
-   npm install
-   ```
+- ✅ **AI-Powered Content Detection**  
+  Real-time detection of inappropriate messages using machine learning and NLP.
 
-2. Start the app
+- 👨‍👩‍👧 **Parental Monitoring Dashboard**  
+  Parents can monitor conversations, receive instant alerts, and manage access controls.
 
-   ```bash
-   npx expo start
-   ```
+- 🔒 **End-to-End Security**  
+  Chats are encrypted, and data is securely stored to ensure full privacy.
 
-In the output, you'll find options to open the app in a
+- 📊 **Smart Alerts**  
+  Automatic alerts sent to parents when suspicious or harmful content is detected.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- 🎨 **Kid-Friendly Interface**  
+  Built with a clean, fun, and easy-to-use interface suitable for children.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## 🎯 Why Chuti?
 
-When you're ready, run:
+While children benefit from chatting online, they also face significant risks. Most mainstream apps lack the necessary safeguards to truly protect young users. Chuti addresses this gap by offering:
+
+- Active and intelligent content moderation  
+- Direct parental control and oversight  
+- A secure space for children to chat safely
+
+---
+
+## 🧱 Tech Stack
+
+- **Frontend**: React Native (with Expo)
+- **Backend**: Node.js / Firebase / Spring Boot
+- **AI/ML**: TensorFlow (Python) or integrated cloud NLP API
+- **Database**: Firebase Firestore / MongoDB
+- **Authentication**: Firebase Auth
+- **Push Notifications**: Expo Notifications
+
+---
+
+## 📦 Getting Started (with Expo)
+
+### 🔧 Prerequisites
+
+- [Node.js](https://nodejs.org/)
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
+- [Git](https://git-scm.com/)
+- Android Studio / Xcode (for emulators)
+
+### 📥 Installation
 
 ```bash
-npm run reset-project
-```
+# Install Expo CLI globally
+npm install -g expo-cli
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+# Clone the repository
+git clone https://github.com/dinethjanitha/Chuti.git
 
-## Learn more
+# Navigate to the app directory
+cd chuti-app
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Install dependencies
+npm install
