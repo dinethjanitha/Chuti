@@ -12,7 +12,11 @@ interface User {
   authProvider: 'local' | 'google';
   isVerified: boolean;
   parentEmail?: string;
-  role: 'child' | 'teen' | 'adult';
+  role: 'children' | 'user' | 'moderator' | 'admin';
+  fullName?: string;
+  emailVerified?: boolean;
+  parentEmailVerified?: boolean;
+  verificationStatus?: 'pending' | 'partial' | 'complete';
 }
 
 interface AuthContextType {
@@ -27,7 +31,11 @@ interface AuthContextType {
     password: string;
     age: number;
     parentEmail?: string;
-  }) => Promise<void>;
+  }) => Promise<{
+    requiresVerification: boolean;
+    requiresParentVerification: boolean;
+    verificationResults?: any;
+  }>;
   googleLogin: (idToken: string) => Promise<void>;
   completeGoogleRegistration: (userData: {
     username: string;
@@ -36,6 +44,7 @@ interface AuthContextType {
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (userData: { username?: string; fullName?: string }) => Promise<void>;
   getUserId: () => Promise<string | null>;
   setUserIdLocal: (userId: string) => Promise<void>;
 }
@@ -232,6 +241,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.setItem('userId', response.data.user.id);
       setUser(response.data.user);
       setUserId(response.data.user.id);
+      
+      // Return verification info for the frontend to handle
+      return {
+        requiresVerification: response.requiresVerification || false,
+        requiresParentVerification: response.requiresParentVerification || false,
+        verificationResults: response.verificationResults
+      };
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Signup failed');
     } finally {
@@ -306,6 +322,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (userData: { username?: string; fullName?: string }) => {
+    try {
+      const response = await authApi.updateProfile(userData);
+      
+      // Update local storage with new user data
+      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+      setUser(response.data.user);
+      
+      // Refresh user data to ensure consistency
+      await refreshUser();
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Profile update failed');
+    }
+  };
+
   const value: AuthContextType = {
     user,
     userId,
@@ -317,6 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     completeGoogleRegistration,
     logout,
     refreshUser,
+    updateProfile,
     getUserId,
     setUserIdLocal,
   };

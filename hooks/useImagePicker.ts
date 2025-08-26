@@ -14,7 +14,7 @@ export const useImagePicker = () => {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Sorry, we need camera roll permissions to select images!'
+          'Sorry, we need gallery permissions to select images!'
         );
         return false;
       }

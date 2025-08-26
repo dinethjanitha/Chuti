@@ -14,7 +14,8 @@ import {
   Lock,
   Palette,
   Globe,
-  Trash2
+  Trash2,
+  User
 } from 'lucide-react-native';
 
 export default function SettingsScreen() {
@@ -24,6 +25,14 @@ export default function SettingsScreen() {
 
   const comingSoon = () => {
     alert('This feature is coming soon!');
+  };
+
+  const goToProfile = () => {
+    router.push('/profile');
+  };
+
+  const handleProfile = () => {
+    router.push('/profile');
   };
 
   return (
@@ -38,6 +47,17 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView}>
+        {/* Profile */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Profile</Text>
+          
+          <TouchableOpacity style={styles.settingItem} onPress={handleProfile}>
+            <User size={20} color="#8E8E93" />
+            <Text style={styles.settingText}>Edit Profile</Text>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Notifications */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifications</Text>

@@ -8,17 +8,25 @@ interface AuthGuardProps {
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    console.log('🔐 AuthGuard: Auth state changed', { isLoading, isAuthenticated });
+    console.log('🔐 AuthGuard: Auth state changed', { isLoading, isAuthenticated, user });
     
     if (!isLoading && !isAuthenticated) {
       console.log('🚪 AuthGuard: User not authenticated, redirecting to login...');
       // Use replace to avoid navigation stack issues
       router.replace('../auth/login');
+      return;
     }
-  }, [isLoading, isAuthenticated]);
+
+    // Check if user is authenticated but not verified
+    if (!isLoading && isAuthenticated && user && user.verificationStatus !== 'complete') {
+      console.log('📧 AuthGuard: User not verified, redirecting to verification...');
+      router.replace('../verification');
+      return;
+    }
+  }, [isLoading, isAuthenticated, user]);
 
   if (isLoading) {
     console.log('⏳ AuthGuard: Still loading...');
@@ -35,7 +43,12 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return null; // Will redirect to login
   }
 
-  console.log('✅ AuthGuard: Authenticated, showing children');
+  if (user && user.verificationStatus !== 'complete') {
+    console.log('📧 AuthGuard: Not verified, showing null while redirecting...');
+    return null; // Will redirect to verification
+  }
+
+  console.log('✅ AuthGuard: Authenticated and verified, showing children');
   return <>{children}</>;
 }
 

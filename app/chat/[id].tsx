@@ -1,13 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  ArrowLeft,
-  MoveVertical as MoreVertical,
-  Phone,
-  Send,
-  Video,
-  ImageIcon,
-  Plus,
-} from "lucide-react-native";
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -29,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { chatApi } from "@/services/api";
 import socketService from "@/services/socketService";
 import { useImagePicker } from "@/hooks/useImagePicker";
-
+import axios from 'axios';
 interface Message {
   _id: string;
   content: string;
@@ -74,6 +66,7 @@ export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [lastSentMessage, setLastSentMessage] = useState("");
   // Check if chat ID exists
   useEffect(() => {
     if (!id) {
@@ -149,22 +142,22 @@ export default function ChatScreen() {
     });
 
     if (!id || !user?.id) {
-      console.log('❌ Missing chat ID or user ID');
+      console.log('Missing chat ID or user ID');
       return;
     }
 
     // Ensure socket is connected
     if (!socketService.isConnected()) {
-      console.log('⚠️ Socket not connected, attempting to connect...');
+      console.log('Socket not connected, attempting to connect...');
       socketService.connect().then(() => {
-        console.log('✅ Socket connected successfully');
+        console.log('Socket connected successfully');
       }).catch((error) => {
-        console.error('❌ Socket connection failed:', error);
+        console.error('Socket connection failed:', error);
       });
       return;
     }
 
-    console.log('✅ Setting up socket listeners for chat:', id);
+    console.log('Setting up socket listeners for chat:', id);
 
     // Join the chat room
     socketService.joinChat(id);
@@ -174,9 +167,42 @@ export default function ChatScreen() {
     const socket = socketService.getSocket();
     if (socket) {
       const debugHandler = (eventName: string, data: any) => {
-        console.log('📡 Socket Event:', eventName, data);
+        console.log('Socket Event:', eventName, data);
+        if (eventName === 'messageBlocked') {
+          console.log('🚨 MESSAGEBLOCKED EVENT DETECTED:', data);
+        }
       };
       socket.onAny(debugHandler);
+
+      // Listen for blocked messages in the same scope
+      socket.on('messageBlocked', (data) => {
+        console.log('🚫 Message blocked received in listener:', data);
+        console.log('🚫 About to show alert...');
+        Alert.alert(
+          'Message Blocked',
+          data.message || 'Your message contains inappropriate content and has been blocked.',
+          [{ text: 'OK' }]
+        );
+        
+        // Remove temp message if it exists
+        setMessages((prev) => prev.filter((msg) => !msg._id.startsWith('temp_')));
+        
+        // Restore the blocked message to input so user can edit it
+        if (lastSentMessage) {
+          setNewMessage(lastSentMessage);
+          setLastSentMessage(""); // Clear after restoring
+        }
+      });
+
+      // Also try using socketService method
+      socketService.onMessageBlocked((data) => {
+        console.log('🚫 Message blocked via socketService:', data);
+        Alert.alert(
+          'Content Warning',
+          'Your message contains inappropriate content and has been blocked.',
+          [{ text: 'OK' }]
+        );
+      });
 
       // Test socket with ping
       setTimeout(() => {
@@ -207,6 +233,8 @@ export default function ChatScreen() {
           if (tempIndex >= 0) {
             const newMessages = [...prev];
             newMessages[tempIndex] = message;
+            // Clear lastSentMessage when temp message is replaced (message sent successfully)
+            setLastSentMessage("");
             return newMessages;
           }
 
@@ -275,6 +303,7 @@ export default function ChatScreen() {
         socket.offAny();
         socket.off('messageDeleted');
         socket.off('chatDeleted');
+        socket.off('messageBlocked');
       }
     };
   }, [id, user?.id]);
@@ -304,6 +333,9 @@ export default function ChatScreen() {
     if (!newMessage.trim() || !id || !user || !user.id) return; // Added userId check
 
     const messageContent = newMessage.trim();
+    
+    // Store the message content before clearing input (for potential restoration if blocked)
+    setLastSentMessage(messageContent);
     setNewMessage("");
 
     // Create temporary message for immediate UI update
@@ -334,7 +366,7 @@ export default function ChatScreen() {
       // The real message will come back via the 'newMessage' socket event
       // and will replace the temp message automatically
       
-      console.log('✅ Message sent via socket, waiting for confirmation...');
+      console.log('Message sent via socket, waiting for confirmation...');
     } catch (error) {
       console.error("Error sending message:", error);
       Alert.alert("Error", "Failed to send message");
@@ -362,17 +394,73 @@ export default function ChatScreen() {
     if (!id || !user || isUploadingImage) return;
 
     try {
-      console.log('📷 Starting image selection...');
+      console.log('Starting image selection...');
       const imageResult = await pickImage();
       
       if (!imageResult) {
-        console.log('❌ No image selected');
+        console.log('No image selected');
         return;
       }
 
-      console.log('📷 Image selected:', imageResult);
-      setIsUploadingImage(true);
+      console.log('Image selected:', imageResult);
 
+
+      
+      // 🛡️ NSFW CHECK: Analyze image before uploading
+      console.log('==========================================');
+      console.log('�️ [CHAT] STARTING NSFW CHECK');
+      console.log('🛡️ [CHAT] Image URI:', imageResult.uri);
+      console.log('🛡️ [CHAT] Image fileName:', imageResult.fileName);
+      console.log('==========================================');
+      
+      // Call external moderation server to check image content
+      console.log('🔍 Calling moderation server at 192.168.8.137:5005...');
+      try {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: imageResult.uri,
+          type: 'image/jpeg',
+          name: imageResult.fileName,
+        } as any);
+
+        console.log("Working...")
+
+        const moderationResponse = await axios.post('http://192.168.8.137:5005/v1/api/check-image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        });
+
+        console.log("moderationResponse------------------------------------------------------")
+        console.log(moderationResponse.data)
+
+        const moderationResult = moderationResponse.data;
+        console.log('🛡️ Moderation server response:', moderationResult);
+
+        // If result is true, it means sexual content detected
+        if (moderationResult.result === true) {
+          console.log('🚫 Sexual content detected - blocking upload');
+          Alert.alert(
+            'Content Warning',
+            'This image contains inappropriate content and cannot be sent.',
+            [{ text: 'OK' }]
+          );
+          return; // Exit function completely - block the upload
+        }
+
+        console.log('✅ Image approved by moderation server');
+      } catch (moderationError) {
+        console.error('❌ Moderation server error:', moderationError);
+            Alert.alert(
+          'Moderation Error',
+          'Unable to verify image content. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return; // Exit function - block upload on moderation failure
+      }
+      
+      setIsUploadingImage(true);
+      
       // Create temporary message for immediate UI update
       const tempMessage: Message = {
         _id: `temp_image_${Date.now()}`,
@@ -396,27 +484,45 @@ export default function ChatScreen() {
       scrollToBottom();
 
       // Upload image
-      console.log('☁️ Uploading image to server...');
-      const response = await chatApi.uploadImage(id, imageResult.uri, imageResult.fileName);
+      console.log('📤 Uploading image to server...');
       
-      if (response.success) {
-        console.log('✅ Image uploaded successfully');
-        // Replace temp message with real message
-        setMessages((prev) => 
-          prev.map((msg) => 
-            msg._id === tempMessage._id ? response.data : msg
-          )
-        );
-      } else {
-        console.error('❌ Image upload failed:', response.message);
-        Alert.alert('Upload Failed', response.message || 'Failed to upload image');
+      try {
+        const response = await chatApi.uploadImage(id, imageResult.uri, imageResult.fileName);
+        
+        if (response.success) {
+          console.log('✅ Image uploaded successfully');
+          // Replace temp message with real message
+          setMessages((prev) => 
+            prev.map((msg) => 
+              msg._id === tempMessage._id ? response.data : msg
+            )
+          );
+        } else {
+          console.error('❌ Image upload failed:', response.message);
+          Alert.alert('Upload Failed', response.message || 'Failed to upload image');
+          // Remove temp message on error
+          setMessages((prev) => prev.filter((msg) => msg._id !== tempMessage._id));
+        }
+      } catch (uploadError: any) {
+        console.error('❌ API Upload error:', uploadError);
+        console.error('Error details:', uploadError.response?.data || uploadError.message);
+        Alert.alert('Upload Error', 'Network error while uploading image. Please try again.');
         // Remove temp message on error
         setMessages((prev) => prev.filter((msg) => msg._id !== tempMessage._id));
+        throw uploadError; // Re-throw to be caught by outer catch
       }
 
     } catch (error: any) {
-      console.error('❌ Image upload error:', error);
-      Alert.alert('Upload Error', 'Failed to upload image. Please try again.');
+      console.error('🚨 Image upload process error:', error);
+      
+      // Check if error occurred before upload (e.g., during NSFW check)
+      if (!isUploadingImage) {
+        console.log('Error occurred before upload started');
+        Alert.alert('Image Processing Error', 'Failed to process image. Please try again.');
+      } else {
+        console.log('Error occurred during upload');
+        Alert.alert('Upload Error', 'Failed to upload image. Please check your connection and try again.');
+      }
       
       // Remove temp message on error if it exists
       setMessages((prev) => prev.filter((msg) => !msg._id.startsWith('temp_image_')));
@@ -435,21 +541,21 @@ export default function ChatScreen() {
   const handleDeleteMessage = async (messageId: string) => {
     console.log('🗑️ handleDeleteMessage called with messageId:', messageId);
     try {
-      console.log('📡 Calling chatApi.deleteMessage...');
+      console.log('Calling chatApi.deleteMessage...');
       const response = await chatApi.deleteMessage(messageId);
-      console.log('📡 Delete message response:', response);
+      console.log('Delete message response:', response);
       
       if (response.success) {
-        console.log('✅ Message deleted successfully, updating local state');
+        console.log('Message deleted successfully, updating local state');
         // Remove message from local state
         setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
       } else {
-        console.error('❌ Delete failed:', response.message);
+        console.error('Delete failed:', response.message);
         Alert.alert("Error", response.message || "Failed to delete message");
       }
     } catch (error: any) {
-      console.error("❌ Delete message error:", error);
-      console.error("❌ Error details:", error.response?.data);
+      console.error("Delete message error:", error);
+      console.error("Error details:", error.response?.data);
       Alert.alert("Error", "Failed to delete message");
     }
   };
@@ -500,9 +606,9 @@ export default function ChatScreen() {
     
     if (isUserMessage) {
       options.push("Delete Message");
-      console.log('✅ Delete option added');
+      console.log('Delete option added');
     } else {
-      console.log('❌ Not user message, no delete option');
+      console.log('Not user message, no delete option');
     }
     options.push("Cancel");
     
@@ -529,7 +635,7 @@ export default function ChatScreen() {
                   text: "Delete",
                   style: "destructive",
                   onPress: () => {
-                    console.log('✅ Delete confirmed, calling handleDeleteMessage');
+                    console.log('Delete confirmed, calling handleDeleteMessage');
                     handleDeleteMessage(message._id);
                   },
                 },
@@ -561,7 +667,7 @@ export default function ChatScreen() {
                       text: "Delete",
                       style: "destructive",
                       onPress: () => {
-                        console.log('✅ Android delete confirmed, calling handleDeleteMessage');
+                        console.log('Android delete confirmed, calling handleDeleteMessage');
                         handleDeleteMessage(message._id);
                       },
                     },
@@ -634,7 +740,7 @@ export default function ChatScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-            <ArrowLeft size={24} color="#007AFF" />
+            <Ionicons name="arrow-back" size={24} color="#007AFF" />
           </TouchableOpacity>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -652,10 +758,10 @@ export default function ChatScreen() {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
-            <Video size={22} color="#007AFF" />
+            <Ionicons name="videocam" size={22} color="#007AFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerIcon}>
-            <Phone size={22} color="#007AFF" />
+            <Ionicons name="call" size={22} color="#007AFF" />
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerIcon}
@@ -674,7 +780,7 @@ export default function ChatScreen() {
               );
             }}
           >
-            <MoreVertical size={22} color="#007AFF" />
+            <Ionicons name="ellipsis-vertical" size={22} color="#007AFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -722,7 +828,7 @@ export default function ChatScreen() {
                 >
                   <TouchableOpacity
                     onLongPress={() => {
-                      console.log('🔄 TouchableOpacity onLongPress triggered for message:', message._id);
+                      console.log('TouchableOpacity onLongPress triggered for message:', message._id);
                       handleMessageLongPress(message);
                     }}
                     delayLongPress={500}
@@ -746,7 +852,7 @@ export default function ChatScreen() {
                             uri: message.fileUrl?.startsWith('http') 
                               ? message.fileUrl 
                               : message.fileUrl?.startsWith('/uploads')
-                              ? `http://192.168.8.145:5000${message.fileUrl}`
+                              ? `http://192.168.8.137:5000${message.fileUrl}`
                               : message.fileUrl
                           }}
                           style={styles.messageImage}
@@ -762,7 +868,7 @@ export default function ChatScreen() {
                                 : styles.otherMessageText,
                             ]}
                           >
-                            {message.fileName}
+                            {/* {message.fileName} */}
                           </Text>
                         )}
                       </View>
@@ -811,7 +917,7 @@ export default function ChatScreen() {
             {isUploadingImage ? (
               <ActivityIndicator size="small" color="#007AFF" />
             ) : (
-              <ImageIcon size={24} color="#007AFF" />
+              <Ionicons name="image" size={24} color="#007AFF" />
             )}
           </TouchableOpacity>
           
@@ -831,7 +937,7 @@ export default function ChatScreen() {
             onPress={handleSendMessage}
             disabled={!newMessage.trim()}
           >
-            <Send size={20} color="#ffffff" />
+            <Ionicons name="send" size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -962,6 +1068,7 @@ const styles = StyleSheet.create({
   },
   sendButtonActive: { backgroundColor: "#007AFF" },
   imageMessage: {
+    width : 250,
     borderRadius: 12,
     overflow: 'hidden',
     maxWidth: 250,

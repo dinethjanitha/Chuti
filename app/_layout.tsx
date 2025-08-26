@@ -16,6 +16,7 @@ export default function RootLayout() {
           <Stack.Screen name="chat/[id]" options={{}} />
           <Stack.Screen name="auth/login" options={{}} />
           <Stack.Screen name="auth/signup" options={{}} />
+          <Stack.Screen name="verification" options={{}} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

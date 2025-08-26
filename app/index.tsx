@@ -4,17 +4,22 @@ import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/(tabs)');
+        // Check if user needs verification
+        if (user?.verificationStatus !== 'complete' && !user?.isVerified) {
+          router.replace('/verification');
+        } else {
+          router.replace('/(tabs)');
+        }
       } else {
         router.replace('/auth/login');
       }
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, user]);
 
   return (
     <View style={styles.container}>

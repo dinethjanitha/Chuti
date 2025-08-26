@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Alert,
   StyleSheet,
   SafeAreaView,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
@@ -18,11 +20,19 @@ import {
   LogOut, 
   Edit3,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Save,
+  X
 } from 'lucide-react-native';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editData, setEditData] = useState({
+    username: user?.username || '',
+    fullName: user?.fullName || user?.username || '',
+  });
 
   const handleLogout = () => {
     Alert.alert(
@@ -53,7 +63,75 @@ export default function ProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    Alert.alert('Coming Soon', 'Profile editing will be available soon!');
+    setEditData({
+      username: user?.username || '',
+      fullName: user?.fullName || user?.username || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditData({
+      username: user?.username || '',
+      fullName: user?.fullName || user?.username || '',
+    });
+    setIsEditing(false);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editData.username.trim()) {
+      Alert.alert('Error', 'Username cannot be empty');
+      return;
+    }
+
+    if (!editData.fullName.trim()) {
+      Alert.alert('Error', 'Name cannot be empty');
+      return;
+    }
+
+    // Validate username format
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(editData.username)) {
+      Alert.alert('Error', 'Username can only contain letters, numbers, and underscores');
+      return;
+    }
+
+    if (editData.username.length < 3 || editData.username.length > 20) {
+      Alert.alert('Error', 'Username must be between 3-20 characters');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      const updateData: { username?: string; fullName?: string } = {};
+      
+      // Only include changed fields
+      if (editData.username !== user?.username) {
+        updateData.username = editData.username;
+      }
+      if (editData.fullName !== (user?.fullName || user?.username)) {
+        updateData.fullName = editData.fullName;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      await updateProfile(updateData);
+      setIsEditing(false);
+      
+      Alert.alert('Success', 'Profile updated successfully!');
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      Alert.alert(
+        'Error', 
+        error.message || 'Failed to update profile'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSettings = () => {
@@ -81,13 +159,58 @@ export default function ProfileScreen() {
           </View>
           
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.username}</Text>
-            <Text style={styles.userUsername}>@{user?.username}</Text>
+            {isEditing ? (
+              <>
+                <TextInput
+                  style={styles.editInput}
+                  value={editData.fullName}
+                  onChangeText={(text) => setEditData(prev => ({ ...prev, fullName: text }))}
+                  placeholder="Enter your name"
+                  maxLength={50}
+                />
+                <TextInput
+                  style={[styles.editInput, styles.usernameInput]}
+                  value={editData.username}
+                  onChangeText={(text) => setEditData(prev => ({ ...prev, username: text }))}
+                  placeholder="Enter username"
+                  autoCapitalize="none"
+                  maxLength={20}
+                />
+              </>
+            ) : (
+              <>
+                <Text style={styles.userName}>{user?.fullName || user?.username}</Text>
+                <Text style={styles.userUsername}>@{user?.username}</Text>
+              </>
+            )}
           </View>
 
-          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-            <Edit3 size={16} color="#007AFF" />
-          </TouchableOpacity>
+          {isEditing ? (
+            <View style={styles.editActions}>
+              <TouchableOpacity 
+                style={styles.cancelButton} 
+                onPress={handleCancelEdit}
+                disabled={isLoading}
+              >
+                <X size={16} color="#FF3B30" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveButton, isLoading && styles.saveButtonDisabled]} 
+                onPress={handleSaveProfile}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Save size={16} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+              <Edit3 size={16} color="#007AFF" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* User Details */}
@@ -125,8 +248,10 @@ export default function ProfileScreen() {
             <View style={styles.infoText}>
               <Text style={styles.infoLabel}>Account Type</Text>
               <Text style={styles.infoValue}>
-                {user?.role === 'child' ? 'Child Account' : 
-                 user?.role === 'teen' ? 'Teen Account' : 'User Account'}
+                {user?.role === 'children' ? 'Children Account' : 
+                 user?.role === 'user' ? 'User Account' : 
+                 user?.role === 'moderator' ? 'Moderator Account' : 
+                 user?.role === 'admin' ? 'Admin Account' : 'Unknown Account'}
               </Text>
             </View>
           </View>
@@ -229,6 +354,37 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 8,
+  },
+  editActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  editInput: {
+    fontSize: 16,
+    color: '#000000',
+    borderBottomWidth: 1,
+    borderBottomColor: '#007AFF',
+    paddingBottom: 4,
+    marginBottom: 8,
+  },
+  usernameInput: {
+    fontSize: 14,
+    color: '#8E8E93',
   },
   section: {
     backgroundColor: '#FFFFFF',

@@ -111,9 +111,51 @@ export const authApi = {
     return response.data;
   },
 
+  // Update user profile
+  updateProfile: async (userData: { username?: string; fullName?: string; profilePicture?: string }) => {
+    const response = await api.patch('/auth/updateMe', userData);
+    return response.data;
+  },
+
   // Logout user
   logout: async () => {
     const response = await api.post('/auth/logout');
+    return response.data;
+  },
+};
+
+// Verification API calls
+export const verificationApi = {
+  // Send verification codes
+  sendVerificationCodes: async (userId: string) => {
+    const response = await api.post('/verification/send-codes', { userId });
+    return response.data;
+  },
+
+  // Verify email with code
+  verifyEmail: async (userId: string, email: string, code: string, type: 'user_email' | 'parent_email') => {
+    const response = await api.post('/verification/verify-email', {
+      userId,
+      email,
+      code,
+      type
+    });
+    return response.data;
+  },
+
+  // Resend verification code
+  resendVerificationCode: async (userId: string, email: string, type: 'user_email' | 'parent_email') => {
+    const response = await api.post('/verification/resend-code', {
+      userId,
+      email,
+      type
+    });
+    return response.data;
+  },
+
+  // Get verification status
+  getVerificationStatus: async (userId: string) => {
+    const response = await api.get(`/verification/status/${userId}`);
     return response.data;
   },
 };

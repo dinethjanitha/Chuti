@@ -15,7 +15,7 @@ class SocketService {
         return;
       }
 
-      this.socket = io("http://192.168.8.145:5000", {
+      this.socket = io("http://192.168.8.137:5000", {
         auth: {
           token,
         },
@@ -113,6 +113,12 @@ class SocketService {
     }
   }
 
+  onMessageBlocked(callback: (data: any) => void): void {
+    if (this.socket) {
+      this.socket.on('messageBlocked', callback);
+    }
+  }
+
   onMessageDelivered(callback: (data: any) => void): void {
     if (this.socket) {
       this.socket.on('message_delivered', callback);
@@ -148,6 +154,26 @@ class SocketService {
   removeListener(event: string): void {
     if (this.socket) {
       this.socket.off(event);
+    }
+  }
+
+  // Remove specific listeners for cleanup
+  offMessageBlocked(): void {
+    if (this.socket) {
+      this.socket.off('messageBlocked');
+    }
+  }
+
+  offNewMessage(): void {
+    if (this.socket) {
+      this.socket.off('newMessage');
+    }
+  }
+
+  offTypingEvents(): void {
+    if (this.socket) {
+      this.socket.off('userStartTyping');
+      this.socket.off('userStopTyping');
     }
   }
 

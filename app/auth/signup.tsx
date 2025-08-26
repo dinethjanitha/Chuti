@@ -82,7 +82,7 @@ export default function SignupScreen() {
       const { username, email, password, age, parentEmail } = formData;
       const ageNum = parseInt(age);
 
-      await signup({
+      const result = await signup({
         username: username.trim(),
         email: email.trim(),
         password,
@@ -90,7 +90,22 @@ export default function SignupScreen() {
         parentEmail: parentEmail.trim() || undefined,
       });
 
-      router.replace('/(tabs)');
+      // Check if verification is required
+      if (result.requiresVerification) {
+        Alert.alert(
+          'Account Created!',
+          'Your account has been created successfully. Please check your email for verification codes.',
+          [
+            {
+              text: 'Verify Now',
+              onPress: () => router.replace('/verification')
+            }
+          ]
+        );
+      } else {
+        // If no verification required, go to main app
+        router.replace('/(tabs)');
+      }
     } catch (error: any) {
       Alert.alert('Signup Failed', error.message);
     }
