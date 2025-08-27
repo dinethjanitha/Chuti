@@ -152,7 +152,7 @@ export default function NewChatScreen() {
 
       {/* Info */}
       <View style={styles.infoContainer}>
-        <Text style={styles.infoText}>💬 Select a user to start chatting</Text>
+        <Text style={styles.infoText}>Select a user to start chatting</Text>
       </View>
 
       {/* Selected User Display */}

@@ -2,7 +2,14 @@
 import axios, { AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.137:5000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// Log API URL for debugging
+console.log('🌐 API_URL configured as:', API_URL);
+
+if (!API_URL) {
+  console.error('EXPO_PUBLIC_API_URL is not defined!');
+}
 
 // Create axios instance
 const api = axios.create({
@@ -16,7 +23,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
-    console.log('🌐 API Request:', {
+    console.log('API Request:', {
       method: config.method?.toUpperCase(),
       url: config.url,
       baseURL: config.baseURL,
@@ -27,9 +34,9 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('🔑 Auth token added to request');
+        console.log('Auth token added to request');
       } else {
-        console.log('ℹ️ No auth token found');
+        console.log('No auth token found');
       }
     } catch (error) {
       console.log('Error getting auth token:', error);
@@ -37,7 +44,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Request interceptor error:', error);
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );

@@ -11,10 +11,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const { isLoading, isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    console.log('🔐 AuthGuard: Auth state changed', { isLoading, isAuthenticated, user });
+    console.log('AuthGuard: Auth state changed', { isLoading, isAuthenticated, user });
     
     if (!isLoading && !isAuthenticated) {
-      console.log('🚪 AuthGuard: User not authenticated, redirecting to login...');
+      console.log('AuthGuard: User not authenticated, redirecting to login...');
       // Use replace to avoid navigation stack issues
       router.replace('../auth/login');
       return;
@@ -22,14 +22,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
     // Check if user is authenticated but not verified
     if (!isLoading && isAuthenticated && user && user.verificationStatus !== 'complete') {
-      console.log('📧 AuthGuard: User not verified, redirecting to verification...');
+      console.log('AuthGuard: User not verified, redirecting to verification...');
       router.replace('../verification');
       return;
     }
   }, [isLoading, isAuthenticated, user]);
 
   if (isLoading) {
-    console.log('⏳ AuthGuard: Still loading...');
+    console.log('AuthGuard: Still loading...');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -39,16 +39,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
-    console.log('❌ AuthGuard: Not authenticated, showing null while redirecting...');
+    console.log('AuthGuard: Not authenticated, showing null while redirecting...');
     return null; // Will redirect to login
   }
 
   if (user && user.verificationStatus !== 'complete') {
-    console.log('📧 AuthGuard: Not verified, showing null while redirecting...');
+    console.log('AuthGuard: Not verified, showing null while redirecting...');
     return null; // Will redirect to verification
   }
 
-  console.log('✅ AuthGuard: Authenticated and verified, showing children');
+  console.log('AuthGuard: Authenticated and verified, showing children');
   return <>{children}</>;
 }
 

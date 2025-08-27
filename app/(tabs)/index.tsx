@@ -66,9 +66,9 @@ export default function ChatListScreen() {
     if (!socketService.isConnected()) {
       console.log('Initializing socket connection for chat list...');
       socketService.connect().then(() => {
-        console.log('✅ Socket connected for chat list');
+        console.log('Socket connected for chat list');
       }).catch((error) => {
-        console.error('❌ Socket connection failed:', error);
+        console.error('Socket connection failed:', error);
       });
     }
   }, []);
@@ -105,7 +105,7 @@ export default function ChatListScreen() {
           const isMessageForThisChat = chat._id === (message.chat || message.chatId);
           
           if (isMessageForThisChat) {
-            console.log('✅ Updating chat in list:', chat._id);
+            console.log('Updating chat in list:', chat._id);
             return {
               ...chat,
               lastMessage: {
@@ -125,7 +125,7 @@ export default function ChatListScreen() {
     const socketInstance = socketService.getSocket();
     if (socketInstance) {
       socketInstance.on('chatDeleted', (data) => {
-        console.log('🗑️ Chat deleted in list:', data);
+        console.log('Chat deleted in list:', data);
         setChats(prevChats => prevChats.filter(chat => chat._id !== data.chatId));
       });
     }

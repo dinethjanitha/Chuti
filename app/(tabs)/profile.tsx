@@ -48,12 +48,12 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('🔄 Profile: Starting logout...');
+              console.log('Profile: Starting logout...');
               await logout();
-              console.log('✅ Profile: Logout successful, AuthGuard will handle redirect');
+              console.log('Profile: Logout successful, AuthGuard will handle redirect');
               // AuthGuard will automatically redirect to login when isAuthenticated becomes false
             } catch (logoutError) {
-              console.error('❌ Profile: Logout error:', logoutError);
+              console.error('Profile: Logout error:', logoutError);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           },

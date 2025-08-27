@@ -2,7 +2,14 @@
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://192.168.8.145:5000';
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL;
+
+// Log Socket URL for debugging
+console.log('SOCKET_URL configured as:', SOCKET_URL);
+
+if (!SOCKET_URL) {
+  console.error('EXPO_PUBLIC_SOCKET_URL is not defined!');
+}
 
 class SocketService {
   private socket: Socket | null = null;
@@ -15,7 +22,7 @@ class SocketService {
         return;
       }
 
-      this.socket = io("http://192.168.8.137:5000", {
+      this.socket = io(SOCKET_URL, {
         auth: {
           token,
         },

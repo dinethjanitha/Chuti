@@ -403,8 +403,6 @@ export default function ChatScreen() {
       }
 
       console.log('Image selected:', imageResult);
-
-
       
       // 🛡️ NSFW CHECK: Analyze image before uploading
       console.log('==========================================');
@@ -414,8 +412,7 @@ export default function ChatScreen() {
       console.log('==========================================');
       
       // Call external moderation server to check image content
-      console.log('🔍 Calling moderation server at 192.168.8.137:5005...');
-      try {
+          try {
         const formData = new FormData();
         formData.append('file', {
           uri: imageResult.uri,
@@ -425,7 +422,7 @@ export default function ChatScreen() {
 
         console.log("Working...")
 
-        const moderationResponse = await axios.post('http://192.168.8.137:5005/v1/api/check-image', formData, {
+        const moderationResponse = await axios.post(`${process.env.EXPO_PUBLIC_API_URL_CONTENT_MOD}/v1/api/check-image`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           }
@@ -448,9 +445,9 @@ export default function ChatScreen() {
           return; // Exit function completely - block the upload
         }
 
-        console.log('✅ Image approved by moderation server');
+        console.log('Image approved by moderation server');
       } catch (moderationError) {
-        console.error('❌ Moderation server error:', moderationError);
+        console.error('Moderation server error:', moderationError);
             Alert.alert(
           'Moderation Error',
           'Unable to verify image content. Please try again.',
@@ -490,7 +487,7 @@ export default function ChatScreen() {
         const response = await chatApi.uploadImage(id, imageResult.uri, imageResult.fileName);
         
         if (response.success) {
-          console.log('✅ Image uploaded successfully');
+          console.log('Image uploaded successfully');
           // Replace temp message with real message
           setMessages((prev) => 
             prev.map((msg) => 
@@ -498,13 +495,13 @@ export default function ChatScreen() {
             )
           );
         } else {
-          console.error('❌ Image upload failed:', response.message);
+          console.error('Image upload failed:', response.message);
           Alert.alert('Upload Failed', response.message || 'Failed to upload image');
           // Remove temp message on error
           setMessages((prev) => prev.filter((msg) => msg._id !== tempMessage._id));
         }
       } catch (uploadError: any) {
-        console.error('❌ API Upload error:', uploadError);
+        console.error('API Upload error:', uploadError);
         console.error('Error details:', uploadError.response?.data || uploadError.message);
         Alert.alert('Upload Error', 'Network error while uploading image. Please try again.');
         // Remove temp message on error
@@ -513,7 +510,7 @@ export default function ChatScreen() {
       }
 
     } catch (error: any) {
-      console.error('🚨 Image upload process error:', error);
+      console.error('Image upload process error:', error);
       
       // Check if error occurred before upload (e.g., during NSFW check)
       if (!isUploadingImage) {
@@ -539,7 +536,7 @@ export default function ChatScreen() {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    console.log('🗑️ handleDeleteMessage called with messageId:', messageId);
+    console.log('handleDeleteMessage called with messageId:', messageId);
     try {
       console.log('Calling chatApi.deleteMessage...');
       const response = await chatApi.deleteMessage(messageId);
@@ -595,12 +592,12 @@ export default function ChatScreen() {
   };
 
   const handleMessageLongPress = (message: Message) => {
-    console.log('📱 Long press detected on message:', message._id);
-    console.log('👤 Current user ID:', user?.id);
-    console.log('💬 Message sender ID:', message.sender._id);
+    console.log('Long press detected on message:', message._id);
+    console.log('Current user ID:', user?.id);
+    console.log('Message sender ID:', message.sender._id);
     
     const isUserMessage = message.sender._id === user?.id;
-    console.log('🔍 Is user message:', isUserMessage);
+    console.log('Is user message:', isUserMessage);
     
     const options = [];
     
@@ -612,10 +609,10 @@ export default function ChatScreen() {
     }
     options.push("Cancel");
     
-    console.log('📋 Options array:', options);
+    console.log('Options array:', options);
     
     if (Platform.OS === "ios") {
-      console.log('🍎 Showing iOS Action Sheet');
+      console.log('Showing iOS Action Sheet');
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
@@ -623,9 +620,9 @@ export default function ChatScreen() {
           cancelButtonIndex: options.length - 1,
         },
         (buttonIndex) => {
-          console.log('🍎 iOS Action Sheet button pressed:', buttonIndex);
+          console.log('iOS Action Sheet button pressed:', buttonIndex);
           if (buttonIndex === 0 && isUserMessage) {
-            console.log('🗑️ Delete option selected');
+            console.log('Delete option selected');
             Alert.alert(
               "Delete Message",
               "Are you sure you want to delete this message?",
@@ -645,7 +642,7 @@ export default function ChatScreen() {
         }
       );
     } else {
-      console.log('🤖 Showing Android Alert');
+      console.log('Showing Android Alert');
       // Android
       if (isUserMessage) {
         Alert.alert(
@@ -852,7 +849,7 @@ export default function ChatScreen() {
                             uri: message.fileUrl?.startsWith('http') 
                               ? message.fileUrl 
                               : message.fileUrl?.startsWith('/uploads')
-                              ? `http://192.168.8.137:5000${message.fileUrl}`
+                              ? `${process.env.EXPO_PUBLIC_API_URL}${message.fileUrl}`
                               : message.fileUrl
                           }}
                           style={styles.messageImage}

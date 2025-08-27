@@ -28,9 +28,9 @@ export default function LoginScreen() {
     }
 
     try {
-      console.log('🧪 Testing direct API login...');
+      console.log('Testing direct API login...');
       
-      const response = await fetch('http://192.168.8.137:5000/api/auth/login', {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,27 +47,27 @@ export default function LoginScreen() {
 
       if (response.ok) {
         const data = JSON.parse(responseText);
-        Alert.alert('Direct API Test', `✅ Login API works!\nStatus: ${response.status}\nToken received: ${data.token ? 'Yes' : 'No'}\nUser: ${data.data?.user?.username || 'Unknown'}`);
+        Alert.alert('Direct API Test', `Login API works!\nStatus: ${response.status}\nToken received: ${data.token ? 'Yes' : 'No'}\nUser: ${data.data?.user?.username || 'Unknown'}`);
       } else {
-        Alert.alert('Direct API Test', `❌ Login failed!\nStatus: ${response.status}\nResponse: ${responseText}`);
+        Alert.alert('Direct API Test', `Login failed!\nStatus: ${response.status}\nResponse: ${responseText}`);
       }
     } catch (error: any) {
-      console.error('❌ Direct API test error:', error);
-      Alert.alert('Direct API Test', `❌ Test failed!\nError: ${error.message}`);
+      console.error('Direct API test error:', error);
+      Alert.alert('Direct API Test', `Test failed!\nError: ${error.message}`);
     }
   };
 
   const testBackendConnection = async () => {
     try {
-      console.log('🔍 Testing backend connection...');
+      console.log('Testing backend connection...');
       
       // Test basic server connection
-      const response = await fetch('http://192.168.8.137:5000');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}`);
       const data = await response.json();
-      console.log('✅ Basic connection successful:', data);
+      console.log('Basic connection successful:', data);
       
       // Test API endpoint
-      const apiResponse = await fetch('http://192.168.8.137:5000/api/auth/me', {
+      const apiResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -77,14 +77,14 @@ export default function LoginScreen() {
       console.log('API test response status:', apiResponse.status);
       
       if (apiResponse.status === 401) {
-        Alert.alert('Backend Test', `✅ Backend is working!\n✅ Server: ${data.message}\n✅ API endpoint accessible (401 expected without token)`);
+        Alert.alert('Backend Test', ` Backend is working!\n Server: ${data.message}\n API endpoint accessible (401 expected without token)`);
       } else {
         const apiData = await apiResponse.json();
-        Alert.alert('Backend Test', `✅ Backend is working!\n✅ Server: ${data.message}\n✅ API Response: ${JSON.stringify(apiData)}`);
+        Alert.alert('Backend Test', ` Backend is working!\n Server: ${data.message}\n API Response: ${JSON.stringify(apiData)}`);
       }
     } catch (error: any) {
-      console.error('❌ Backend connection error:', error);
-      Alert.alert('Backend Test', `❌ Connection failed!\nError: ${error.message}\nMake sure your backend is running on port 5000.`);
+      console.error('Backend connection error:', error);
+      Alert.alert('Backend Test', `Connection failed!\nError: ${error.message}\nMake sure your backend is running on port 5000.`);
     }
   };
 
@@ -95,15 +95,15 @@ export default function LoginScreen() {
     }
 
     try {
-      console.log('🔄 Starting login process...');
-      console.log('📧 Email:', email.trim());
+      console.log('Starting login process...');
+      console.log('Email:', email.trim());
       
       await login(email.trim(), password);
       
-      console.log('✅ Login successful, navigating to tabs...');
+      console.log(' Login successful, navigating to tabs...');
       router.replace('/(tabs)');
     } catch (error: any) {
-      console.error('❌ Login failed:', error);
+      console.error('Login failed:', error);
       Alert.alert('Login Failed', error.message);
     }
   };
