@@ -167,8 +167,10 @@ export default function ChatListScreen() {
     }
     
     // For direct chats, show the other participant's name
-    const otherParticipant = chat.participants.find(p => p.user._id !== user?.id);
-    return otherParticipant?.user.username || 'Unknown User';
+    const otherParticipant = chat.participants?.find(p => p?.user?._id !== user?.id);
+    return otherParticipant?.user?.fullName || 
+           otherParticipant?.user?.username || 
+           'Unknown User';
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -249,7 +251,7 @@ export default function ChatListScreen() {
                 <View style={styles.chatPreview}>
                   <Text style={styles.lastMessage} numberOfLines={1}>
                     {chat.lastMessage 
-                      ? `${chat.lastMessage.sender.username}: ${chat.lastMessage.content}`
+                      ? `${chat.lastMessage.sender?.username || 'Unknown'}: ${chat.lastMessage.content}`
                       : 'No messages yet'
                     }
                   </Text>

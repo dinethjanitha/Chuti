@@ -67,6 +67,7 @@ export default function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [lastSentMessage, setLastSentMessage] = useState("");
+  const [dataReady, setDataReady] = useState(false);
   // Check if chat ID exists
   useEffect(() => {
     if (!id) {
@@ -77,31 +78,61 @@ export default function ChatScreen() {
 
   // Load chat messages
   const loadMessages = useCallback(async () => {
-    if (!id) return;
+    if (!id || !user || !user.id) {
+      console.log("❌ Cannot load messages: missing id or user data", { id, user: user?.id });
+      return;
+    }
+
+    console.log("🔄 Starting to load chat data...");
+    setIsLoading(true);
+    setDataReady(false); // Reset data ready state
 
     try {
-      // Load messages
+      console.log("🏠 Loading chat details first...");
+      // Load chat details FIRST to ensure we have chat structure
+      const chatResponse = await chatApi.getChatDetails(id);
+      console.log("chatResponse:", chatResponse);
+      
+      if (chatResponse.success && chatResponse.data) {
+        // Validate chat data structure
+        const chatData = chatResponse.data;
+        if (chatData && chatData.participants && Array.isArray(chatData.participants)) {
+          console.log("✅ Chat data validated and set");
+          setChat(chatData);
+        } else {
+          console.error("Invalid chat data structure:", chatData);
+          Alert.alert("Error", "Invalid chat data received");
+          return;
+        }
+      } else {
+        console.error("Failed to load chat details");
+        Alert.alert("Error", "Failed to load chat details");
+        return;
+      }
+
+      console.log("📥 Loading messages...");
+      // Now load messages after chat is established
       const messagesResponse = await chatApi.getChatMessages(id);
       console.log("getChatMessages response:", messagesResponse);
 
-      // Fix: Backend returns response.data for messages, not response.messages
       if (messagesResponse.success && messagesResponse.data) {
-        setMessages(messagesResponse.data);
+        // Filter out any invalid messages
+        const validMessages = messagesResponse.data.filter((msg: any) => {
+          const isValid = msg && 
+                         msg._id && 
+                         msg.sender && 
+                         msg.sender._id &&
+                         (msg.sender.username || msg.sender.fullName);
+          if (!isValid) {
+            console.warn("❌ Invalid message filtered out:", msg);
+          }
+          return isValid;
+        });
+        console.log(`✅ Loaded ${validMessages.length} valid messages`);
+        setMessages(validMessages);
       } else {
+        console.log("📭 No messages found");
         setMessages([]);
-      }
-
-      // Load chat details separately
-      try {
-        const chatResponse = await chatApi.getChatDetails(id);
-        if (chatResponse.success && chatResponse.data) {
-          setChat(chatResponse.data);
-        }
-        setChat(chatResponse.data);
-        console.log("chatResponse");
-        console.log(chatResponse);
-      } catch (chatError) {
-        console.error("Error loading chat details:", chatError);
       }
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -109,19 +140,27 @@ export default function ChatScreen() {
       setMessages([]);
     } finally {
       setIsLoading(false);
-      // Scroll to bottom after messages are loaded
+      
+      // Set data ready only when we have all required data
       setTimeout(() => {
+        if (user && user.id) {
+          console.log("🎯 All data ready - enabling interface");
+          setDataReady(true);
+        }
         scrollToBottom();
       }, 200);
     }
-  }, [id]);
+  }, [id, user]);
 
   // Initial load
   useEffect(() => {
-    if (id) {
+    if (id && user && user.id) {
+      console.log("🚀 Starting initial data load for chat:", id);
       loadMessages();
+    } else {
+      console.log("⏳ Waiting for user data before loading chat...", { id, userId: user?.id });
     }
-  }, [id, loadMessages]);
+  }, [id, user, loadMessages]);
 
   // Scroll to bottom when messages change (except during initial loading)
   useEffect(() => {
@@ -174,10 +213,11 @@ export default function ChatScreen() {
       };
       socket.onAny(debugHandler);
 
-      // Listen for blocked messages in the same scope
-      socket.on('messageBlocked', (data) => {
-        console.log('🚫 Message blocked received in listener:', data);
-        console.log('🚫 About to show alert...');
+      // Listen for blocked messages - consolidated handler
+      const handleMessageBlocked = (data: any) => {
+        console.log('🚫 Message blocked received:', data);
+        console.log('🚫 Current lastSentMessage:', lastSentMessage);
+        
         Alert.alert(
           'Message Blocked',
           data.message || 'Your message contains inappropriate content and has been blocked.',
@@ -185,24 +225,23 @@ export default function ChatScreen() {
         );
         
         // Remove temp message if it exists
-        setMessages((prev) => prev.filter((msg) => !msg._id.startsWith('temp_')));
+        setMessages((prev) => {
+          console.log('🗑️ Removing temp messages, current count:', prev.length);
+          const filtered = prev.filter((msg) => !msg._id.startsWith('temp_'));
+          console.log('🗑️ After filtering, count:', filtered.length);
+          return filtered;
+        });
         
         // Restore the blocked message to input so user can edit it
         if (lastSentMessage) {
+          console.log('↩️ Restoring blocked message to input:', lastSentMessage);
           setNewMessage(lastSentMessage);
           setLastSentMessage(""); // Clear after restoring
         }
-      });
+      };
 
-      // Also try using socketService method
-      socketService.onMessageBlocked((data) => {
-        console.log('🚫 Message blocked via socketService:', data);
-        Alert.alert(
-          'Content Warning',
-          'Your message contains inappropriate content and has been blocked.',
-          [{ text: 'OK' }]
-        );
-      });
+      // Set up the listener
+      socket.on('messageBlocked', handleMessageBlocked);
 
       // Test socket with ping
       setTimeout(() => {
@@ -306,7 +345,7 @@ export default function ChatScreen() {
         socket.off('messageBlocked');
       }
     };
-  }, [id, user?.id]);
+  }, [id, user?.id, lastSentMessage]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener("keyboardDidShow", (e) => {
@@ -345,8 +384,8 @@ export default function ChatScreen() {
       messageType: "text", // Changed from 'type' to 'messageType'
       sender: {
         _id: user.id, // Use stored userId instead of user._id
-        username: user.username,
-        fullName: user.username, // Use username as fallback
+        username: user.username || "Unknown",
+        fullName: user.fullName || user.username || "Unknown", // Safe fallback
       },
       chat: id, // Changed from chatId to chat
       createdAt: new Date().toISOString(),
@@ -461,12 +500,12 @@ export default function ChatScreen() {
       // Create temporary message for immediate UI update
       const tempMessage: Message = {
         _id: `temp_image_${Date.now()}`,
-        content: imageResult.fileName,
+        content: imageResult.fileName || "Image",
         messageType: "image",
         sender: {
           _id: user.id,
-          username: user.username,
-          fullName: user.username,
+          username: user.username || "Unknown",
+          fullName: user.fullName || user.username || "Unknown",
         },
         chat: id,
         fileUrl: imageResult.uri, // Use local URI temporarily
@@ -682,44 +721,56 @@ export default function ChatScreen() {
   console.log("user");
   console.log(user?.id);
 
-  const otherParticipant = chat?.participants.find(
-   (participant) => participant.user._id !== user?.id
-);
+  // Safely find the other participant
+  const otherParticipant = chat?.participants?.find(
+    (participant) => participant?.user?._id !== user?.id
+  );
   console.log("anotherUser");
-
   console.log(otherParticipant);
-  const getChatName = () => {
-    if (!chat || !user) return "Chat"; // Use userId instead of user
-    // if(otherParticipant) return otherParticipant.user.username;
+  const getChatName = (): string => {
+    try {
+      console.log("🏷️ getChatName called with:", {
+        chat: !!chat,
+        user: !!user,
+        userId: user?.id,
+        dataReady,
+        chatType: chat?.chatType,
+        participantsCount: chat?.participants?.length
+      });
+      
+      // Extra safety check
+      if (!chat || !user || !user.id || !dataReady) {
+        console.log("🏷️ Data not ready, returning fallback");
+        return "Loading...";
+      }
 
-    console.log("test");
-    // Removed invalid filter line
-    console.log("getChatName debug:", {
-      chatType: chat.chatType,
-      currentUserId: user.id,
-      participants: chat.participants.map((p) => ({
-        id: p.user._id,
-        username: p.user.username,
-        fullName: p.user.fullName,
-      })),
-    });
+      if (chat.chatType === "direct") {
+        // Find the other participant (not the current user)
+        const otherParticipant = chat.participants?.find(
+          (p) => p?.user?._id !== user.id
+        );
 
-    if (chat.chatType === "direct") {
-      // Find the other participant (not the current user)
-      const otherParticipant = chat.participants.find(
-        (p) => p.user._id !== user.id // Use stored userId for comparison
-      );
+        console.log("🏷️ Other participant:", {
+          found: !!otherParticipant,
+          userId: otherParticipant?.user?._id,
+          username: otherParticipant?.user?.username,
+          fullName: otherParticipant?.user?.fullName
+        });
 
-      console.log("Other participant found:", otherParticipant);
+        // Safely access nested properties with multiple fallbacks
+        const displayName = otherParticipant?.user?.fullName || 
+                           otherParticipant?.user?.username || 
+                           "Unknown User";
 
-      return (
-        otherParticipant?.user.fullName ||
-        otherParticipant?.user.username ||
-        "Chat"
-      );
+        console.log("🏷️ Final displayName:", displayName);
+        return displayName;
+      }
+
+      return chat.name || "Group Chat";
+    } catch (error) {
+      console.error("🏷️ Error in getChatName:", error);
+      return "Chat";
     }
-
-    return chat.name || "Group Chat";
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -731,36 +782,61 @@ export default function ChatScreen() {
     return null;
   }
 
+  // Add safety check for user
+  if (!user || !user.id) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading user data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {getChatName().charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.chatInfo}>
-            <Text style={styles.chatName}>{getChatName()}</Text>
-            <Text style={styles.chatStatus}>
-              {typingUsers.length > 0 ? "typing..." : "online"}
+        {/* Show loading screen until all data is ready */}
+        {isLoading || !dataReady || !chat || !user || !user.id ? (
+          <View style={styles.fullScreenLoading}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingTitle}>Loading Chat...</Text>
+            <Text style={styles.loadingSubtitle}>
+              {!user ? "Loading user data..." : 
+               !chat ? "Loading chat details..." : 
+               !dataReady ? "Preparing interface..." :
+               "Almost ready..."}
             </Text>
           </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Ionicons name="videocam" size={22} color="#007AFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Ionicons name="call" size={22} color="#007AFF" />
-          </TouchableOpacity>
-          <TouchableOpacity 
+        ) : (
+          <>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color="#007AFF" />
+                </TouchableOpacity>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {getChatName().charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.chatInfo}>
+                  <Text style={styles.chatName}>{getChatName()}</Text>
+                  <Text style={styles.chatStatus}>
+                    {typingUsers.length > 0 ? "typing..." : "online"}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.headerRight}>
+                <TouchableOpacity style={styles.headerIcon}>
+                  <Ionicons name="videocam" size={22} color="#007AFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerIcon}>
+                  <Ionicons name="call" size={22} color="#007AFF" />
+                </TouchableOpacity>
+                <TouchableOpacity 
             style={styles.headerIcon}
             onPress={() => {
               Alert.alert(
@@ -805,15 +881,37 @@ export default function ChatScreen() {
               <Text style={styles.emptySubText}>Start the conversation!</Text>
             </View>
           ) : (
-            messages.map((message) => {
-              // Option 1: Use the stored userId directly (preferred)
-              const isUser = message.sender._id === user?.id;
+            messages
+              .filter((message) => {
+                // Filter out any invalid messages before rendering
+                if (!message || typeof message !== 'object') {
+                  console.warn('Invalid message object:', message);
+                  return false;
+                }
+                if (!message._id) {
+                  console.warn('Message missing _id:', message);
+                  return false;
+                }
+                if (!message.sender || typeof message.sender !== 'object') {
+                  console.warn('Message missing sender or invalid sender:', message);
+                  return false;
+                }
+                if (!message.sender._id) {
+                  console.warn('Message sender missing _id:', message);
+                  return false;
+                }
+                return true;
+              })
+              .map((message) => {
+              // Additional safety check
+              if (!message || !message.sender) {
+                console.warn('Invalid message found after filtering:', message);
+                return null;
+              }
 
-              // Option 2: Fallback to user._id if userId is not available
-              // const isUser = message.sender._id === (userId || user?._id);
-
-              // Option 3: Keep using user._id (existing approach)
-              // const isUser = message.sender._id === user?._id;
+              try {
+                // Option 1: Use the stored userId directly (preferred)
+                const isUser = message.sender._id === user?.id;
 
               return (
                 <View
@@ -837,7 +935,7 @@ export default function ChatScreen() {
                   >
                     {!isUser && chat?.chatType === "group" && (
                       <Text style={styles.senderName}>
-                        {message.sender.username}
+                        {message.sender?.fullName || message.sender?.username || "Unknown"}
                       </Text>
                     )}
                     
@@ -895,6 +993,15 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                 </View>
               );
+              } catch (renderError) {
+                console.error('Error rendering message:', renderError, 'Message:', message);
+                // Return a safe fallback for this message
+                return (
+                  <View key={message._id || `error-${Date.now()}`} style={styles.messageContainer}>
+                    <Text style={styles.errorText}>Error loading message</Text>
+                  </View>
+                );
+              }
             })
           )}
         </ScrollView>
@@ -938,7 +1045,9 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+            </>
+        )}
+      </SafeAreaView>
   );
 }
 
@@ -1080,5 +1189,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginTop: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ff0000',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: 8,
+  },
+  fullScreenLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 20,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });

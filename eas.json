@@ -24,6 +24,17 @@
         "EXPO_PUBLIC_API_URL_CONTENT_MOD": "https://chuticontentmod-chgfbshvevacfqbn.eastus-01.azurewebsites.net"
       }
     },
+    "preview-local": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://chutibackend-dnd7bvf7amhzgjff.eastus-01.azurewebsites.net",
+        "EXPO_PUBLIC_SOCKET_URL": "https://chutibackend-dnd7bvf7amhzgjff.eastus-01.azurewebsites.net",
+        "EXPO_PUBLIC_API_URL_CONTENT_MOD": "https://chuticontentmod-chgfbshvevacfqbn.eastus-01.azurewebsites.net"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {

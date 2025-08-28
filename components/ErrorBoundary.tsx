@@ -23,8 +23,20 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log the error
+    // Log the error with more details
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('Error stack:', error.stack);
+    console.error('Component stack:', errorInfo.componentStack);
+    
+    // If it's a displayName error, log more details
+    if (error.message?.includes('displayName')) {
+      console.error('DisplayName error detected:', {
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+      });
+    }
+    
     this.setState({
       error,
       errorInfo,
