@@ -438,6 +438,7 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
     fontWeight: '600',
     marginBottom: 16,
+    color: '#000000', // Explicit black color for text
   },
   verifyButton: {
     backgroundColor: '#007AFF',

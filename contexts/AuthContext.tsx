@@ -65,12 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   const clearAuthData = async () => {
-    console.log('🧹 Clearing authentication data...');
+    console.log('Clearing authentication data...');
     
     try {
       // Disconnect socket first
       socketService.disconnect();
-      console.log('🔌 Socket disconnected');
+      console.log('Socket disconnected');
       
       // Clear AsyncStorage
       await Promise.all([
@@ -78,15 +78,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         AsyncStorage.removeItem('user'),
         AsyncStorage.removeItem('userId')
       ]);
-      console.log('💾 AsyncStorage cleared');
+      console.log('AsyncStorage cleared');
       
       // Clear state
       setUser(null);
       setUserId(null);
       
-      console.log('✅ Auth data cleared successfully');
+      console.log('Auth data cleared successfully');
     } catch (error) {
-      console.error('❌ Error clearing auth data:', error);
+      console.error('Error clearing auth data:', error);
       // Still try to clear state even if AsyncStorage fails
       setUser(null);
       setUserId(null);
@@ -174,36 +174,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (emailOrUsername: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log('🔑 Starting login process...');
-      console.log('📧 Email/Username:', emailOrUsername);
+      console.log('Starting login process...');
+      console.log('Email/Username:', emailOrUsername);
       
       const response = await authApi.login({ emailOrUsername, password });
-      console.log('✅ Login response received:', JSON.stringify(response, null, 2));
+      console.log('Login response received:', JSON.stringify(response, null, 2));
       
       if (!response.token) {
-        console.error('❌ No token in response');
+        console.error('No token in response');
         throw new Error('No token received from server');
       }
       
       if (!response.data || !response.data.user) {
-        console.error('❌ No user data in response');
+        console.error(' No user data in response');
         throw new Error('No user data received from server');
       }
       
-      console.log('🔍 User data received:', JSON.stringify(response.data.user, null, 2));
+      console.log('User data received:', JSON.stringify(response.data.user, null, 2));
       
-      console.log('💾 Storing auth data...');
+      console.log('Storing auth data...');
       await AsyncStorage.setItem('authToken', response.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
       await AsyncStorage.setItem('userId', response.data.user.id);
       
-      console.log('👤 Setting user state...');
+      console.log('Setting user state...');
       setUser(response.data.user);
       setUserId(response.data.user.id);
       
-      console.log('🎉 Login successful!');
+      console.log('Login successful!');
     } catch (error: any) {
-      console.error('❌ Login error details:');
+      console.error('Login error details:');
       console.error('  - Error type:', typeof error);
       console.error('  - Error message:', error.message);
       console.error('  - Has response?', !!error.response);
@@ -300,25 +300,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      console.log('🚪 Starting logout process...');
+      console.log('Starting logout process...');
       setIsLoading(true);
       
       // Call backend logout endpoint
       try {
         await authApi.logout();
-        console.log('✅ Backend logout successful');
+        console.log('Backend logout successful');
       } catch (backendError) {
-        console.log('⚠️ Backend logout error:', backendError);
+        console.log('Backend logout error:', backendError);
         // Continue with local logout even if backend fails
       }
     } catch (error) {
-      console.error('❌ Logout process error:', error);
+      console.error('Logout process error:', error);
     } finally {
       // Always clear local data
-      console.log('🧹 Clearing local auth data...');
+      console.log('Clearing local auth data...');
       await clearAuthData();
       setIsLoading(false);
-      console.log('👋 Logout complete');
+      console.log('Logout complete');
     }
   };
 

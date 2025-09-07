@@ -166,6 +166,7 @@ export default function ProfileScreen() {
                   value={editData.fullName}
                   onChangeText={(text) => setEditData(prev => ({ ...prev, fullName: text }))}
                   placeholder="Enter your name"
+                  placeholderTextColor="#8E8E93"
                   maxLength={50}
                 />
                 <TextInput
@@ -173,6 +174,7 @@ export default function ProfileScreen() {
                   value={editData.username}
                   onChangeText={(text) => setEditData(prev => ({ ...prev, username: text }))}
                   placeholder="Enter username"
+                  placeholderTextColor="#8E8E93"
                   autoCapitalize="none"
                   maxLength={20}
                 />

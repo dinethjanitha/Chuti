@@ -27,6 +27,10 @@ export default function SettingsScreen() {
     alert('This feature is coming soon!');
   };
 
+  const goToNotifications = () => {
+    router.push('/notifications');
+  };
+
   const goToProfile = () => {
     router.push('/profile');
   };
@@ -62,7 +66,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifications</Text>
           
-          <TouchableOpacity style={styles.settingItem} onPress={comingSoon}>
+          <TouchableOpacity style={styles.settingItem} onPress={goToNotifications}>
             <Bell size={20} color="#8E8E93" />
             <Text style={styles.settingText}>Push Notifications</Text>
             <Text style={styles.settingArrow}>›</Text>

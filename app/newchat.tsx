@@ -143,6 +143,7 @@ export default function NewChatScreen() {
         <TextInput
           style={styles.searchInput}
           placeholder="Search users..."
+          placeholderTextColor="#8E8E93"
           value={searchQuery}
           onChangeText={handleSearch}
           autoCapitalize="none"

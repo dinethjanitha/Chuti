@@ -8,6 +8,10 @@
     "scheme": "chuti",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
+    "notifications": {
+      "icon": "./assets/images/icon.png",
+      "color": "#007AFF"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -17,7 +21,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.dinethjanitha.Chuti"
+      "package": "com.dinethjanitha.Chuti",
+      "useNextNotificationsApi": true
     },
     "web": {
       "bundler": "metro",
@@ -33,6 +38,14 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "sounds": []
         }
       ]
     ],

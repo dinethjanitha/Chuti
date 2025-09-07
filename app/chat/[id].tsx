@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { Image } from 'expo-image';
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppState } from "@/contexts/AppStateContext";
 import { chatApi } from "@/services/api";
 import socketService from "@/services/socketService";
 import { useImagePicker } from "@/hooks/useImagePicker";
@@ -56,6 +57,7 @@ interface Chat {
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth(); // Added userId here
+  const { setCurrentChatId } = useAppState(); // Added AppState context
   const { pickImage } = useImagePicker();
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -75,6 +77,20 @@ export default function ChatScreen() {
       return;
     }
   }, [id]);
+
+  // Set current chat ID for notification context
+  useEffect(() => {
+    if (id) {
+      console.log('📱 Setting current chat ID:', id);
+      setCurrentChatId(id);
+    }
+
+    // Cleanup: clear current chat ID when component unmounts
+    return () => {
+      console.log('📱 Clearing current chat ID');
+      setCurrentChatId(null);
+    };
+  }, [id, setCurrentChatId]);
 
   // Load chat messages
   const loadMessages = useCallback(async () => {
@@ -596,6 +612,26 @@ export default function ChatScreen() {
     }
   };
 
+  const showComingSoon = (feature: string) => {
+    Alert.alert(
+      "🚧 Coming Soon!",
+      `${feature} feature is being developed with extra safety measures for kids. It will include parent approval and monitoring features to ensure safe communication.`,
+      [
+        { text: "Got it!", style: "default" },
+        { 
+          text: "Learn More", 
+          onPress: () => {
+            Alert.alert(
+              "Safety First! 🛡️",
+              "All calling features in Chuti will require:\n\n• Parent permission\n• Supervised connections\n• Recording for safety\n• Time limits\n• Emergency controls\n\nStay tuned for updates!",
+              [{ text: "Awesome!", style: "default" }]
+            );
+          }
+        }
+      ]
+    );
+  };
+
   const handleDeleteChat = async () => {
     if (!id) return;
     
@@ -830,10 +866,16 @@ export default function ChatScreen() {
                 </View>
               </View>
               <View style={styles.headerRight}>
-                <TouchableOpacity style={styles.headerIcon}>
+                <TouchableOpacity 
+                  style={styles.headerIcon}
+                  onPress={() => showComingSoon("Video Call")}
+                >
                   <Ionicons name="videocam" size={22} color="#007AFF" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.headerIcon}>
+                <TouchableOpacity 
+                  style={styles.headerIcon}
+                  onPress={() => showComingSoon("Voice Call")}
+                >
                   <Ionicons name="call" size={22} color="#007AFF" />
                 </TouchableOpacity>
                 <TouchableOpacity 
@@ -901,6 +943,12 @@ export default function ChatScreen() {
                   return false;
                 }
                 return true;
+              })
+              .sort((a, b) => {
+                // Sort messages by timestamp (oldest first, newest last)
+                const timeA = new Date(a.createdAt).getTime();
+                const timeB = new Date(b.createdAt).getTime();
+                return timeA - timeB;
               })
               .map((message) => {
               // Additional safety check
@@ -1028,6 +1076,7 @@ export default function ChatScreen() {
           <TextInput
             style={styles.textInput}
             placeholder="Type a message..."
+            placeholderTextColor="#8E8E93"
             value={newMessage}
             onChangeText={handleInputChange}
             multiline
@@ -1152,6 +1201,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#F8F8F8",
     marginHorizontal: 8,
+    color: "#000000", // Explicit black color for text
   },
   imageButton: {
     backgroundColor: "#F8F8F8",

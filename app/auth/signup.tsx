@@ -1,7 +1,7 @@
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import { ArrowLeft, Eye, EyeOff, UserPlus } from 'lucide-react-native';
-import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -27,17 +27,6 @@ export default function SignupScreen() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const testBackendConnection = async () => {
-    try {
-      const response = await fetch('http://192.168.8.137:5000');
-      const data = await response.json();
-      Alert.alert('Backend Test', `Connection successful!\n${data.message}\nStatus: ${data.status}`);
-    } catch (error: any) {
-      Alert.alert('Backend Test', 'Connection failed! Make sure your backend is running on port 5000.');
-      console.error('Backend connection error:', error);
-    }
-  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -67,8 +56,15 @@ export default function SignupScreen() {
       return false;
     }
 
-    if (ageNum < 13 && !formData.parentEmail.trim()) {
-      Alert.alert('Error', 'Parent email is required for users under 13');
+    if (ageNum < 18 && !formData.parentEmail.trim()) {
+      Alert.alert('Error', 'Parent email is required for users under 18');
+      return false;
+    }
+
+    // Check if parent email is different from child email
+    if (formData.parentEmail.trim() && 
+        formData.parentEmail.trim().toLowerCase() === email.trim().toLowerCase()) {
+      Alert.alert('Error', 'Parent email must be different from your email address');
       return false;
     }
 
@@ -114,8 +110,8 @@ export default function SignupScreen() {
   const navigateToLogin = () => {
     router.back();
   };
-
-  const isUnder13 = formData.age && parseInt(formData.age) < 13;
+  
+  const isUnder18 = formData.age && parseInt(formData.age) < 18;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -138,6 +134,7 @@ export default function SignupScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Choose a username"
+                placeholderTextColor="#8E8E93"
                 value={formData.username}
                 onChangeText={(value) => handleInputChange('username', value)}
                 autoCapitalize="none"
@@ -150,6 +147,7 @@ export default function SignupScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your email"
+                placeholderTextColor="#8E8E93"
                 value={formData.email}
                 onChangeText={(value) => handleInputChange('email', value)}
                 keyboardType="email-address"
@@ -163,6 +161,7 @@ export default function SignupScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your age"
+                placeholderTextColor="#8E8E93"
                 value={formData.age}
                 onChangeText={(value) => handleInputChange('age', value)}
                 keyboardType="numeric"
@@ -170,15 +169,16 @@ export default function SignupScreen() {
               />
             </View>
 
-            {isUnder13 && (
+            {isUnder18 && (
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Parent Email *</Text>
                 <Text style={styles.helperText}>
-                  Required for users under 13. Your parent will receive a verification email.
+                  Required for users under 18. Your parent will receive a verification email.
                 </Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Enter parent's email"
+                  placeholderTextColor="#8E8E93"
                   value={formData.parentEmail}
                   onChangeText={(value) => handleInputChange('parentEmail', value)}
                   keyboardType="email-address"
@@ -194,6 +194,7 @@ export default function SignupScreen() {
                 <TextInput
                   style={[styles.input, styles.passwordInput]}
                   placeholder="Create a password"
+                  placeholderTextColor="#8E8E93"
                   value={formData.password}
                   onChangeText={(value) => handleInputChange('password', value)}
                   secureTextEntry={!showPassword}
@@ -219,6 +220,7 @@ export default function SignupScreen() {
                 <TextInput
                   style={[styles.input, styles.passwordInput]}
                   placeholder="Confirm your password"
+                  placeholderTextColor="#8E8E93"
                   value={formData.confirmPassword}
                   onChangeText={(value) => handleInputChange('confirmPassword', value)}
                   secureTextEntry={!showConfirmPassword}
@@ -251,10 +253,6 @@ export default function SignupScreen() {
                   <Text style={styles.signupButtonText}>Create Account</Text>
                 </>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.testButton} onPress={testBackendConnection}>
-              <Text style={styles.testButtonText}>Test Backend Connection</Text>
             </TouchableOpacity>
 
             <View style={styles.footer}>
@@ -329,6 +327,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     backgroundColor: '#F8F8F8',
+    color: '#000000', // Explicit black color for text
   },
   passwordContainer: {
     position: 'relative',
@@ -358,20 +357,6 @@ const styles = StyleSheet.create({
   },
   signupButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  testButton: {
-    borderWidth: 1,
-    borderColor: '#25D366',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginBottom: 20,
-  },
-  testButtonText: {
-    color: '#25D366',
     fontSize: 16,
     fontWeight: '600',
   },

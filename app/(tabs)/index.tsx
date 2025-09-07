@@ -18,6 +18,7 @@ interface Chat {
       username: string;
     };
   };
+  lastActivity?: string; // Added for sorting and real-time updates
   participants: {
     user: { // Changed structure to match populated data
       _id: string;
@@ -90,43 +91,127 @@ export default function ChatListScreen() {
 
     console.log('Setting up chat list socket listeners...');
 
-    // Listen for new messages
-    socketService.onNewMessage((message) => {
+    // Listen for new messages to update chat list
+    const handleNewMessage = (message: any) => {
       console.log('📨 New message received in chat list:', {
         messageId: message._id,
         content: message.content,
         chatId: message.chat || message.chatId,
-        sender: message.sender?.username
+        sender: message.sender?.username,
+        senderId: message.sender?._id || message.senderId
       });
 
-      setChats(prevChats => 
-        prevChats.map(chat => {
-          // Check both message.chat and message.chatId for compatibility
-          const isMessageForThisChat = chat._id === (message.chat || message.chatId);
-          
-          if (isMessageForThisChat) {
-            console.log('Updating chat in list:', chat._id);
-            return {
-              ...chat,
-              lastMessage: {
-                content: message.content,
-                createdAt: message.createdAt,
-                sender: message.sender,
+      setChats(prevChats => {
+        const chatId = message.chat || message.chatId;
+        let updatedChats = [...prevChats];
+        
+        // Find existing chat or create new one if needed
+        const existingChatIndex = updatedChats.findIndex(chat => chat._id === chatId);
+        
+        if (existingChatIndex >= 0) {
+          // Update existing chat
+          updatedChats[existingChatIndex] = {
+            ...updatedChats[existingChatIndex],
+            lastMessage: {
+              content: message.content,
+              createdAt: message.createdAt || new Date().toISOString(),
+              sender: {
+                _id: message.sender?._id || message.senderId,
+                username: message.sender?.username || 'Unknown'
               },
-              unreadCount: (chat.unreadCount || 0) + 1,
-            };
-          }
-          return chat;
-        })
-      );
-    });
+            },
+            unreadCount: (updatedChats[existingChatIndex].unreadCount || 0) + 1,
+          };
+        } else {
+          // If chat doesn't exist in the list, reload the entire list
+          console.log('📨 New chat detected, reloading chat list...');
+          loadChats();
+          return prevChats;
+        }
+        
+        // Sort chats by latest message (most recent first)
+        return updatedChats.sort((a, b) => {
+          const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+          const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+          return bTime - aTime;
+        });
+      });
+    };
 
-    // Listen for deleted chats
+    // Listen for chat updates (when chat info changes)
+    const handleChatUpdated = (updatedChat: any) => {
+      console.log('📝 Chat updated:', updatedChat);
+      setChats(prevChats => 
+        prevChats.map(chat => 
+          chat._id === updatedChat._id ? { ...chat, ...updatedChat } : chat
+        )
+      );
+    };
+
+    // Listen for new chats being created
+    const handleNewChat = (newChat: any) => {
+      console.log('➕ New chat created:', newChat);
+      setChats(prevChats => {
+        // Check if chat already exists
+        const exists = prevChats.some(chat => chat._id === newChat._id);
+        if (!exists) {
+          return [newChat, ...prevChats];
+        }
+        return prevChats;
+      });
+    };
+
+    // Set up socket listeners
+    socketService.onNewMessage(handleNewMessage);
+
     const socketInstance = socketService.getSocket();
     if (socketInstance) {
+      // 🏠 CHAT LIST REAL-TIME UPDATES
+      socketInstance.on('chatListUpdate', (update) => {
+        console.log('🏠 Chat list update received:', update);
+        
+        setChats(prevChats => {
+          return prevChats.map(chat => {
+            if (chat._id === update.chatId) {
+              return {
+                ...chat,
+                lastMessage: update.lastMessage,
+                lastActivity: update.lastActivity,
+                // Increment unread count for non-senders
+                unreadCount: update.incrementUnread ? (chat.unreadCount || 0) + 1 : chat.unreadCount
+              };
+            }
+            return chat;
+          }).sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
+        });
+      });
+
       socketInstance.on('chatDeleted', (data) => {
-        console.log('Chat deleted in list:', data);
+        console.log('🗑️ Chat deleted in list:', data);
         setChats(prevChats => prevChats.filter(chat => chat._id !== data.chatId));
+      });
+
+      socketInstance.on('chatUpdated', handleChatUpdated);
+      socketInstance.on('newChat', handleNewChat);
+      
+      // Listen for message status updates
+      socketInstance.on('messageDelivered', (data) => {
+        console.log('✅ Message delivered:', data);
+        // Could update delivery status in UI if needed
+      });
+
+      socketInstance.on('messageRead', (data) => {
+        console.log('👁️ Message read:', data);
+        // Could update read status and reset unread count
+        if (data.chatId) {
+          setChats(prevChats => 
+            prevChats.map(chat => 
+              chat._id === data.chatId 
+                ? { ...chat, unreadCount: 0 }
+                : chat
+            )
+          );
+        }
       });
     }
 
@@ -134,10 +219,15 @@ export default function ChatListScreen() {
       console.log('Cleaning up chat list socket listeners');
       socketService.removeListener('newMessage');
       
-      // Clean up deletion listener
+      // Clean up all listeners
       const socketInstance = socketService.getSocket();
       if (socketInstance) {
+        socketInstance.off('chatListUpdate');
         socketInstance.off('chatDeleted');
+        socketInstance.off('chatUpdated');
+        socketInstance.off('newChat');
+        socketInstance.off('messageDelivered');
+        socketInstance.off('messageRead');
       }
     };
   }, []);
@@ -157,6 +247,9 @@ export default function ChatListScreen() {
           : c
       )
     );
+    
+    // Mark messages as read on the backend
+    socketService.markMessagesAsRead(chat._id);
     
     router.push(`/chat/${chat._id}`);
   };
